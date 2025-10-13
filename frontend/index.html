@@ -1,0 +1,489 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MUNvare - Complete MUN Assistant</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <!-- Sidebar Navigation -->
+    <nav class="sidebar">
+        <div class="sidebar-header">
+            <h1>MUNvare</h1>
+            <p class="subtitle">Your MUN Companion</p>
+        </div>
+        <ul class="nav-items">
+            <li><a href="#" data-section="dashboard" class="nav-link active">Dashboard</a></li>
+            <li><a href="#" data-section="setup" class="nav-link">⚙️ Setup</a></li>
+            <li><a href="#" data-section="chat" class="nav-link">AI Chat</a></li>
+            <li><a href="#" data-section="speeches" class="nav-link">Speech Generator</a></li>
+            <li><a href="#" data-section="notes" class="nav-link">My Notes</a></li>
+            <li><a href="#" data-section="premade" class="nav-link">Study Guides</a></li>
+            <li><a href="#" data-section="research" class="nav-link">Research Tools</a></li>
+            <li><a href="#" data-section="speech-rating" class="nav-link">Speech Rating</a></li>
+            <li><a href="#" data-section="search" class="nav-link">Search Book</a></li>
+        </ul>
+    </nav>
+
+    <!-- Main Content Area -->
+    <main class="main-content">
+
+        <!-- Dashboard Section -->
+        <section id="dashboard" class="content-section active">
+            <h2>Dashboard</h2>
+            <div class="dashboard-grid">
+                <div class="dashboard-card" onclick="navigateTo('setup')">
+                    <h3>⚙️ Setup</h3>
+                    <p>Configure your delegate info, committee, and other delegates</p>
+                </div>
+                <div class="dashboard-card" onclick="navigateTo('chat')">
+                    <h3>AI Chat Assistant</h3>
+                    <p>Ask questions - AI knows your country, notes, and agenda</p>
+                </div>
+                <div class="dashboard-card" onclick="navigateTo('speeches')">
+                    <h3>Speech Generator</h3>
+                    <p>Generate speeches using your research notes automatically</p>
+                </div>
+                <div class="dashboard-card" onclick="navigateTo('notes')">
+                    <h3>Note Taking</h3>
+                    <p>Organize notes in folders with templates - AI uses them everywhere</p>
+                </div>
+                <div class="dashboard-card" onclick="navigateTo('premade')">
+                    <h3>Study Guides</h3>
+                    <p>Pre-made comprehensive notes from the MUN guidebook</p>
+                </div>
+                <div class="dashboard-card" onclick="navigateTo('research')">
+                    <h3>Research Tools</h3>
+                    <p>POI questions, foreign policy research, and modcaucus topics</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Setup Section -->
+        <section id="setup" class="content-section">
+            <h2>⚙️ Setup & Configuration</h2>
+            <p class="section-description">Configure your MUN session - AI will use this everywhere</p>
+
+            <div class="setup-container">
+                <div class="setup-card">
+                    <h3>My Delegate Information</h3>
+                    <div class="form-group">
+                        <label>Country</label>
+                        <input type="text" id="setupCountry" placeholder="e.g., India, United States" />
+                    </div>
+                    <div class="form-group">
+                        <label>Committee</label>
+                        <input type="text" id="setupCommittee" placeholder="e.g., UNSC, ECOSOC, UNHRC" />
+                    </div>
+                    <div class="form-group">
+                        <label>Agenda/Topic</label>
+                        <input type="text" id="setupAgenda" placeholder="e.g., Climate Change, Cybersecurity" />
+                    </div>
+                    <div class="form-group">
+                        <label>Portfolio (Optional)</label>
+                        <input type="text" id="setupPortfolio" placeholder="e.g., Single Delegate, Press" />
+                    </div>
+                    <button onclick="saveMyDelegate()" class="btn btn-primary">Save My Info</button>
+                </div>
+
+                <div class="setup-card">
+                    <h3>Other Delegates</h3>
+                    <div class="form-group">
+                        <label>Add Delegate</label>
+                        <div style="display: flex; gap: 8px;">
+                            <input type="text" id="otherDelegateCountry" placeholder="Country name" style="flex: 1;" />
+                            <button onclick="addOtherDelegate()" class="btn">Add</button>
+                        </div>
+                    </div>
+                    <div id="otherDelegatesList" class="delegates-list"></div>
+                </div>
+
+                <div class="setup-card">
+                    <h3>Committee Information</h3>
+                    <div class="form-group">
+                        <label>Study Guide Link</label>
+                        <input type="text" id="setupStudyGuide" placeholder="URL to committee study guide" />
+                    </div>
+                    <div class="form-group">
+                        <label>Position Paper Due</label>
+                        <input type="text" id="setupPositionPaper" placeholder="Date" />
+                    </div>
+                    <button onclick="saveCommitteeInfo()" class="btn btn-primary">Save Committee Info</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Chat Section -->
+        <section id="chat" class="content-section">
+            <div class="chat-layout">
+                <div class="chat-sidebar">
+                    <div class="chat-sidebar-header">
+                        <h3>Conversations</h3>
+                        <button onclick="createNewChat()" class="btn btn-primary">+ New</button>
+                    </div>
+                    <div id="chatHistoryList" class="chat-history-list"></div>
+                </div>
+                <div class="chat-main">
+                    <h2>AI Chat Assistant</h2>
+                    <p class="section-description" style="margin-bottom: 16px;">
+                        💡 AI knows your country, committee, and all your notes
+                    </p>
+                    <div class="chat-container">
+                        <div class="chat-messages" id="chatMessages"></div>
+                        <div class="chat-input-container">
+                            <input type="text" id="chatInput" placeholder="Ask anything about MUN..." />
+                            <button onclick="sendMessage()" class="btn">Send</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Speech Generator Section -->
+        <section id="speeches" class="content-section">
+            <h2>Speech Generator</h2>
+            <div class="form-container">
+                <div class="form-group">
+                    <label>Country</label>
+                    <input type="text" id="speechCountry" placeholder="e.g., India, United States" />
+                </div>
+                <div class="form-group">
+                    <label>Committee</label>
+                    <input type="text" id="speechCommittee" placeholder="e.g., UNSC, ECOSOC, UNHRC" />
+                </div>
+                <div class="form-group">
+                    <label>Topic/Agenda</label>
+                    <input type="text" id="speechTopic" placeholder="e.g., Climate Change, Cybersecurity" />
+                </div>
+                <div class="form-group">
+                    <label>Stance (Optional)</label>
+                    <input type="text" id="speechStance" placeholder="e.g., Pro-regulation, Against intervention" />
+                </div>
+                <div class="form-group">
+                    <label>Speech Type</label>
+                    <select id="speechType">
+                        <option value="GSL">GSL (General Speakers List)</option>
+                        <option value="Moderated Caucus">Moderated Caucus</option>
+                        <option value="Opening Speech">Opening Speech</option>
+                        <option value="Closing Speech">Closing Speech</option>
+                    </select>
+                </div>
+                <button onclick="generateSpeech()" class="btn btn-primary">Generate Speech</button>
+
+                <div id="speechOutput" class="output-container" style="display: none;">
+                    <h3>Generated Speech</h3>
+                    <div id="speechContent" class="speech-content"></div>
+                    <button onclick="copySpeech()" class="btn btn-secondary">Copy to Clipboard</button>
+                </div>
+            </div>
+
+            <div class="saved-speeches">
+                <h3>Saved Speeches</h3>
+                <div id="savedSpeeches" class="speeches-list"></div>
+            </div>
+        </section>
+
+        <!-- Notes Section -->
+        <section id="notes" class="content-section">
+            <div class="notes-header">
+                <h2>My Notes</h2>
+                <div style="display: flex; gap: 12px;">
+                    <button onclick="showTemplateModal()" class="btn btn-secondary">📋 From Template</button>
+                    <button onclick="createNewNote()" class="btn btn-primary">+ New Note</button>
+                </div>
+            </div>
+
+            <p class="section-description" style="margin-bottom: 16px;">
+                💡 Your notes are automatically used by AI when chatting and generating speeches
+            </p>
+
+            <div class="notes-container">
+                <div class="notes-list">
+                    <div class="folders-section">
+                        <h4>Folders</h4>
+                        <div id="foldersList"></div>
+                    </div>
+                    <div class="notes-section">
+                        <h4>Notes</h4>
+                        <div id="notesList"></div>
+                    </div>
+                </div>
+                <div class="note-editor" id="noteEditor" style="display: none;">
+                    <input type="text" id="noteTitle" class="note-title" placeholder="Note Title" />
+                    <textarea id="noteContent" class="note-content" placeholder="Start writing your notes..."></textarea>
+                    <div class="note-actions">
+                        <button onclick="saveNote()" class="btn btn-primary">Save</button>
+                        <button onclick="analyzeNote()" class="btn btn-secondary">Analyze with AI</button>
+                        <button onclick="deleteNote()" class="btn btn-danger">Delete</button>
+                    </div>
+                    <div id="noteAnalysis" class="note-analysis" style="display: none;"></div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Template Modal -->
+        <div id="templateModal" class="modal" style="display: none;">
+            <div class="modal-content">
+                <h3>Choose a Template</h3>
+                <div id="templatesList" class="templates-grid"></div>
+                <button onclick="closeTemplateModal()" class="btn">Cancel</button>
+            </div>
+        </div>
+
+        <!-- Premade Notes Section -->
+        <section id="premade" class="content-section">
+            <h2>Study Guides</h2>
+            <p class="section-description">Comprehensive notes extracted from the MUN guidebook</p>
+            <div id="premadeNotesList" class="premade-notes-grid"></div>
+            <div id="premadeNoteViewer" class="note-viewer" style="display: none;">
+                <button onclick="closePremadeNote()" class="btn btn-secondary">← Back to List</button>
+                <h3 id="premadeNoteTitle"></h3>
+                <div id="premadeNoteContent" class="markdown-content"></div>
+            </div>
+        </section>
+
+        <!-- Research Tools Section -->
+        <section id="research" class="content-section">
+            <h2>Research Tools</h2>
+            <p class="section-description">Comprehensive MUN research tools - click on any tool to use it</p>
+
+            <!-- Quick Research Button -->
+            <div style="margin-bottom: 24px; padding: 24px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 12px; color: white;">
+                <h3 style="margin: 0 0 12px 0; color: white;">DO MY WHOLE RESEARCH FOR ME</h3>
+                <p style="margin: 0 0 16px 0; opacity: 0.9;">Automatically generate comprehensive research on everything at once!</p>
+                <div style="display: flex; gap: 12px; margin-bottom: 12px;">
+                    <input type="text" id="autoCountry" placeholder="Your Country" style="flex: 1;" />
+                    <input type="text" id="autoTopic" placeholder="Topic" style="flex: 1;" />
+                    <input type="text" id="autoCommittee" placeholder="Committee" style="flex: 1;" />
+                </div>
+                <button onclick="doComprehensiveResearch()" class="btn" style="background: white; color: #667eea; font-weight: bold;">Generate Everything</button>
+                <div id="autoResearchOutput" class="output-container" style="display: none; margin-top: 16px; background: white; color: #333;"></div>
+            </div>
+
+            <div class="research-tools-grid">
+                <div class="tool-card" onclick="navigateTo('research-poi')">
+                    <h3>POI Questions</h3>
+                    <p>Generate challenging POI questions</p>
+                </div>
+                <div class="tool-card" onclick="navigateTo('research-policy')">
+                    <h3>Foreign Policy</h3>
+                    <p>Research country positions</p>
+                </div>
+                <div class="tool-card" onclick="navigateTo('research-modcaucus')">
+                    <h3>ModCaucus Topics</h3>
+                    <p>Suggest discussion topics</p>
+                </div>
+                <div class="tool-card" onclick="navigateTo('research-profile')">
+                    <h3>Country Profile</h3>
+                    <p>Comprehensive country analysis</p>
+                </div>
+                <div class="tool-card" onclick="navigateTo('research-resolution')">
+                    <h3>Resolution Builder</h3>
+                    <p>Draft resolution clauses</p>
+                </div>
+                <div class="tool-card" onclick="navigateTo('research-crisis')">
+                    <h3>Crisis Response</h3>
+                    <p>Handle crisis situations</p>
+                </div>
+                <div class="tool-card" onclick="navigateTo('research-debate')">
+                    <h3>Debate Prep</h3>
+                    <p>Prepare against opponents</p>
+                </div>
+                <div class="tool-card" onclick="navigateTo('research-allies')">
+                    <h3>Ally Finder</h3>
+                    <p>Find potential allies</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Individual Research Tool Pages -->
+        <section id="research-poi" class="content-section">
+            <button onclick="navigateTo('research')" class="btn btn-secondary">← Back to Research Tools</button>
+            <h2>POI Question Generator</h2>
+            <div class="form-container">
+                <div class="form-group">
+                    <label>Your Country</label>
+                    <input type="text" id="poiCountry" placeholder="e.g., India" />
+                </div>
+                <div class="form-group">
+                    <label>Topic</label>
+                    <input type="text" id="poiTopic" placeholder="e.g., Climate Change" />
+                </div>
+                <div class="form-group">
+                    <label>Target Country (Optional)</label>
+                    <input type="text" id="poiTarget" placeholder="e.g., United States" />
+                </div>
+                <button onclick="generatePOI()" class="btn btn-primary">Generate Questions</button>
+                <div id="poiOutput" class="output-container" style="display: none;"></div>
+            </div>
+        </section>
+
+        <section id="research-policy" class="content-section">
+            <button onclick="navigateTo('research')" class="btn btn-secondary">← Back to Research Tools</button>
+            <h2>Foreign Policy Research</h2>
+            <div class="form-container">
+                <div class="form-group">
+                    <label>Country</label>
+                    <input type="text" id="fpCountry" placeholder="e.g., China" />
+                </div>
+                <div class="form-group">
+                    <label>Topic</label>
+                    <input type="text" id="fpTopic" placeholder="e.g., Nuclear Disarmament" />
+                </div>
+                <button onclick="researchForeignPolicy()" class="btn btn-primary">Research</button>
+                <div id="fpOutput" class="output-container" style="display: none;"></div>
+            </div>
+        </section>
+
+        <section id="research-modcaucus" class="content-section">
+            <button onclick="navigateTo('research')" class="btn btn-secondary">← Back to Research Tools</button>
+            <h2>Moderated Caucus Topics</h2>
+            <div class="form-container">
+                <div class="form-group">
+                    <label>Main Agenda</label>
+                    <input type="text" id="mcAgenda" placeholder="e.g., Sustainable Development" />
+                </div>
+                <div class="form-group">
+                    <label>Committee</label>
+                    <input type="text" id="mcCommittee" placeholder="e.g., ECOSOC" />
+                </div>
+                <button onclick="suggestModCaucus()" class="btn btn-primary">Get Suggestions</button>
+                <div id="mcOutput" class="output-container" style="display: none;"></div>
+            </div>
+        </section>
+
+        <section id="research-profile" class="content-section">
+            <button onclick="navigateTo('research')" class="btn btn-secondary">← Back to Research Tools</button>
+            <h2>Country Profile Generator</h2>
+            <div class="form-container">
+                <div class="form-group">
+                    <label>Country</label>
+                    <input type="text" id="profileCountry" placeholder="e.g., Russia" />
+                </div>
+                <div class="form-group">
+                    <label>Topic (Optional)</label>
+                    <input type="text" id="profileTopic" placeholder="e.g., Cybersecurity" />
+                </div>
+                <button onclick="generateCountryProfile()" class="btn btn-primary">Generate Profile</button>
+                <div id="profileOutput" class="output-container" style="display: none;"></div>
+            </div>
+        </section>
+
+        <section id="research-resolution" class="content-section">
+            <button onclick="navigateTo('research')" class="btn btn-secondary">← Back to Research Tools</button>
+            <h2>Resolution Builder</h2>
+            <div class="form-container">
+                <div class="form-group">
+                    <label>Topic</label>
+                    <input type="text" id="resolutionTopic" placeholder="e.g., Climate Change" />
+                </div>
+                <div class="form-group">
+                    <label>Committee</label>
+                    <input type="text" id="resolutionCommittee" placeholder="e.g., UNEP" />
+                </div>
+                <div class="form-group">
+                    <label>Country (Optional)</label>
+                    <input type="text" id="resolutionCountry" placeholder="Your country's perspective" />
+                </div>
+                <button onclick="generateResolution()" class="btn btn-primary">Build Resolution</button>
+                <div id="resolutionOutput" class="output-container" style="display: none;"></div>
+            </div>
+        </section>
+
+        <section id="research-crisis" class="content-section">
+            <button onclick="navigateTo('research')" class="btn btn-secondary">← Back to Research Tools</button>
+            <h2>Crisis Response Generator</h2>
+            <div class="form-container">
+                <div class="form-group">
+                    <label>Your Country</label>
+                    <input type="text" id="crisisCountry" placeholder="e.g., India" />
+                </div>
+                <div class="form-group">
+                    <label>Crisis Description</label>
+                    <textarea id="crisisDescription" placeholder="Describe the crisis situation..." rows="4"></textarea>
+                </div>
+                <button onclick="generateCrisisResponse()" class="btn btn-primary">Generate Response</button>
+                <div id="crisisOutput" class="output-container" style="display: none;"></div>
+            </div>
+        </section>
+
+        <section id="research-debate" class="content-section">
+            <button onclick="navigateTo('research')" class="btn btn-secondary">← Back to Research Tools</button>
+            <h2>Debate Preparation</h2>
+            <div class="form-container">
+                <div class="form-group">
+                    <label>Your Country</label>
+                    <input type="text" id="debateMyCountry" placeholder="e.g., India" />
+                </div>
+                <div class="form-group">
+                    <label>Opponent Country</label>
+                    <input type="text" id="debateOpponent" placeholder="e.g., China" />
+                </div>
+                <div class="form-group">
+                    <label>Topic</label>
+                    <input type="text" id="debateTopic" placeholder="e.g., Border Disputes" />
+                </div>
+                <button onclick="prepareDebate()" class="btn btn-primary">Prepare Debate</button>
+                <div id="debateOutput" class="output-container" style="display: none;"></div>
+            </div>
+        </section>
+
+        <section id="research-allies" class="content-section">
+            <button onclick="navigateTo('research')" class="btn btn-secondary">← Back to Research Tools</button>
+            <h2>Ally Finder & Opposition Analysis</h2>
+            <div class="form-container">
+                <div class="form-group">
+                    <label>Your Country</label>
+                    <input type="text" id="allyCountry" placeholder="e.g., India" />
+                </div>
+                <div class="form-group">
+                    <label>Topic</label>
+                    <input type="text" id="allyTopic" placeholder="e.g., Climate Change" />
+                </div>
+                <button onclick="findAllies()" class="btn btn-primary">Find Allies & Opposition</button>
+                <div id="allyOutput" class="output-container" style="display: none;"></div>
+            </div>
+        </section>
+
+        <!-- Speech Rating Section -->
+        <section id="speech-rating" class="content-section">
+            <h2>Speech Rating & Analysis</h2>
+            <p class="section-description">Record your speech and get AI-powered feedback</p>
+
+            <div class="speech-rating-container">
+                <div class="recording-controls">
+                    <button id="startRecording" onclick="startRecording()" class="btn btn-primary">Start Recording</button>
+                    <button id="stopRecording" onclick="stopRecording()" class="btn btn-danger" style="display: none;">Stop Recording</button>
+                    <div id="recordingStatus" class="recording-status"></div>
+                </div>
+
+                <div id="transcriptionOutput" class="output-container" style="display: none;">
+                    <h3>Transcription</h3>
+                    <div id="transcriptionText" class="transcription-text"></div>
+
+                    <h3>Sentiment Analysis</h3>
+                    <div id="sentimentAnalysis" class="sentiment-analysis"></div>
+
+                    <h3>AI Feedback</h3>
+                    <div id="speechFeedback" class="speech-feedback"></div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Search Section -->
+        <section id="search" class="content-section">
+            <h2>Search MUN Guidebook</h2>
+            <div class="search-container">
+                <input type="text" id="searchQuery" placeholder="Search for MUN topics, procedures, tips..." />
+                <button onclick="searchBook()" class="btn">Search</button>
+            </div>
+            <div id="searchResults" class="search-results"></div>
+        </section>
+
+    </main>
+
+    <script src="app.js"></script>
+    <script src="app_new_features.js"></script>
+</body>
+</html>

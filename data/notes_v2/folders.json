@@ -1,0 +1,32 @@
+[
+  {
+    "id": "research",
+    "name": "Research",
+    "icon": "\ud83d\udd0d"
+  },
+  {
+    "id": "speeches",
+    "name": "Speeches",
+    "icon": "\ud83c\udfa4"
+  },
+  {
+    "id": "poi",
+    "name": "POI Questions",
+    "icon": "\u2753"
+  },
+  {
+    "id": "lobbying",
+    "name": "Lobbying Strategy",
+    "icon": "\ud83e\udd1d"
+  },
+  {
+    "id": "documentation",
+    "name": "Documentation",
+    "icon": "\ud83d\udcc4"
+  },
+  {
+    "id": "general",
+    "name": "General Notes",
+    "icon": "\ud83d\udcdd"
+  }
+]
