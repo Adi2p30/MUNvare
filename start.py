@@ -11,49 +11,45 @@ import webbrowser
 import subprocess
 from pathlib import Path
 
+PORT = 8000
+
+# Auto-activate venv: if a .venv exists and we're not already inside it, re-exec with its Python
+_root = Path(__file__).parent
+_venv_python = _root / '.venv' / 'bin' / 'python'
+if _venv_python.exists() and sys.executable != str(_venv_python):
+    os.execv(str(_venv_python), [str(_venv_python)] + sys.argv)
+
 def check_dependencies():
-    """Check if required dependencies are installed"""
+    import importlib.util
     print("Checking dependencies...")
-
-    try:
-        import flask
-        import chromadb
-        import sentence_transformers
-        print("✓ Core dependencies found")
-    except ImportError as e:
-        print(f"✗ Missing dependency: {e}")
+    missing = [pkg for pkg in ('flask', 'flask_socketio') if importlib.util.find_spec(pkg) is None]
+    if missing:
+        print(f"✗ Missing dependencies: {', '.join(missing)}")
         print("\nPlease install dependencies:")
-        print("  pip install -r requirements.txt")
+        print("  pip install -r backend/requirements.txt")
         sys.exit(1)
+    print("✓ Core dependencies found")
 
-    # Check for API keys
     from dotenv import load_dotenv
     load_dotenv()
 
-    has_openai = bool(os.getenv('OPENAI_API_KEY'))
-    has_anthropic = bool(os.getenv('ANTHROPIC_API_KEY'))
+    has_gemini = bool(os.getenv('GEMINI_API_KEY'))
 
-    if not (has_openai or has_anthropic):
-        print("⚠ Warning: No AI API keys found in .env file")
-        print("  AI features will not work without API keys")
-        print("  Please set OPENAI_API_KEY or ANTHROPIC_API_KEY in .env")
+    if not has_gemini:
+        print("⚠ Warning: GEMINI_API_KEY not found in .env file")
+        print("  AI features will not work without it")
+        print("  Please set GEMINI_API_KEY in your .env file")
         print("\nContinuing anyway...")
     else:
-        if has_openai:
-            print("✓ OpenAI API key found")
-        if has_anthropic:
-            print("✓ Anthropic API key found")
+        print("✓ Gemini API key found")
 
 def check_vectordb():
-    """Check if vector database needs initialization"""
     vectordb_path = Path("data/chromadb")
-
     if not vectordb_path.exists():
         print("\n📚 Vector database not found. It will be initialized on first run.")
         print("   This may take a minute...")
 
 def start_backend():
-    """Start the Flask backend server"""
     print("\n" + "="*60)
     print("Starting MUNvare Backend Server...")
     print("="*60)
@@ -64,22 +60,19 @@ def start_backend():
         print(f"✗ Backend file not found: {backend_path}")
         sys.exit(1)
 
-    # Start backend in a subprocess
     process = subprocess.Popen(
         [sys.executable, str(backend_path)],
+        cwd=str(Path(__file__).parent),
         stdout=sys.stdout,
         stderr=sys.stderr
     )
 
-    # Wait for server to start
     print("\nWaiting for server to start...")
     time.sleep(3)
-
     return process
 
 def open_browser():
-    """Open the application in the default browser"""
-    url = "http://localhost:5000"
+    url = f"http://localhost:{PORT}"
     print(f"\n🌐 Opening browser at {url}")
     webbrowser.open(url)
 
@@ -95,27 +88,25 @@ def main():
     Complete MUN Assistant Platform
     """)
 
-    # Run checks
     check_dependencies()
     check_vectordb()
 
-    # Start backend
     process = start_backend()
 
-    # Open browser
     time.sleep(2)
     open_browser()
 
     print("\n" + "="*60)
     print("MUNvare is running!")
     print("="*60)
-    print("\n📍 Frontend: http://localhost:5000")
-    print("📍 API: http://localhost:5000/api")
+    print(f"\n📍 App:      http://localhost:{PORT}")
+    print(f"📍 Chair:    http://localhost:{PORT}/chair")
+    print(f"📍 Delegate: http://localhost:{PORT}/delegate")
+    print(f"📍 API:      http://localhost:{PORT}/api")
     print("\n💡 Press Ctrl+C to stop the server")
     print("="*60 + "\n")
 
     try:
-        # Keep the script running
         process.wait()
     except KeyboardInterrupt:
         print("\n\n🛑 Shutting down MUNvare...")

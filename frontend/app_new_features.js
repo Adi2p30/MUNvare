@@ -549,4 +549,335 @@ style.textContent = `
 `;
 document.head.appendChild(style);
 
-console.log('✅ New features loaded: Setup, Chat History, Templates');
+// ============= SPEECH RATING & ANALYSIS =============
+
+async function analyzeSpeech(analysisType) {
+    const speechText = document.getElementById('speechTextInput').value.trim();
+
+    if (!speechText) {
+        showNotification('Please enter a speech to analyze', 'error');
+        return;
+    }
+
+    const country = document.getElementById('rateSpeechCountry').value;
+    const topic = document.getElementById('rateSpeechTopic').value;
+    const committee = document.getElementById('rateSpeechCommittee').value;
+
+    // Show loading
+    document.getElementById('analysisLoading').style.display = 'block';
+    document.getElementById('speechAnalysisResults').style.display = 'none';
+
+    // Hide all result sections initially
+    document.getElementById('grammarResults').style.display = 'none';
+    document.getElementById('ethicsResults').style.display = 'none';
+    document.getElementById('impactResults').style.display = 'none';
+    document.getElementById('comprehensiveResults').style.display = 'none';
+
+    try {
+        if (analysisType === 'comprehensive' || analysisType === 'grammar') {
+            await analyzeGrammar(speechText, analysisType === 'comprehensive');
+        }
+
+        if (analysisType === 'comprehensive' || analysisType === 'ethics') {
+            await analyzeEthics(speechText, country, analysisType === 'comprehensive');
+        }
+
+        if (analysisType === 'comprehensive' || analysisType === 'impact') {
+            await analyzeImpact(speechText, topic, committee, analysisType === 'comprehensive');
+        }
+
+        if (analysisType === 'comprehensive') {
+            await analyzeComprehensive(speechText, country, topic, committee);
+        }
+
+        // Show results container
+        document.getElementById('speechAnalysisResults').style.display = 'block';
+        showNotification('Analysis complete!', 'success');
+
+    } catch (error) {
+        showNotification('Error analyzing speech: ' + error.message, 'error');
+    } finally {
+        document.getElementById('analysisLoading').style.display = 'none';
+    }
+}
+
+async function analyzeGrammar(speechText, silent = false) {
+    const response = await fetch(`${API_BASE}/speech/rate-grammar`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ speech_text: speechText })
+    });
+
+    const result = await response.json();
+
+    if (result.analysis) {
+        document.getElementById('grammarContent').innerHTML = marked.parse(result.analysis);
+        document.getElementById('grammarResults').style.display = 'block';
+        if (!silent) showNotification('Grammar analysis complete!', 'success');
+    }
+}
+
+async function analyzeEthics(speechText, country, silent = false) {
+    const response = await fetch(`${API_BASE}/speech/rate-ethics`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ speech_text: speechText, country: country })
+    });
+
+    const result = await response.json();
+
+    if (result.analysis) {
+        document.getElementById('ethicsContent').innerHTML = marked.parse(result.analysis);
+        document.getElementById('ethicsResults').style.display = 'block';
+        if (!silent) showNotification('Ethics analysis complete!', 'success');
+    }
+}
+
+async function analyzeImpact(speechText, topic, committee, silent = false) {
+    const response = await fetch(`${API_BASE}/speech/rate-impact`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ speech_text: speechText, topic: topic, committee: committee })
+    });
+
+    const result = await response.json();
+
+    if (result.analysis) {
+        document.getElementById('impactContent').innerHTML = marked.parse(result.analysis);
+        document.getElementById('impactResults').style.display = 'block';
+        if (!silent) showNotification('Impact analysis complete!', 'success');
+    }
+}
+
+async function analyzeComprehensive(speechText, country, topic, committee) {
+    const response = await fetch(`${API_BASE}/speech/rate-comprehensive`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            speech_text: speechText,
+            country: country,
+            topic: topic,
+            committee: committee
+        })
+    });
+
+    const result = await response.json();
+
+    if (result.analysis) {
+        document.getElementById('comprehensiveContent').innerHTML = marked.parse(result.analysis);
+        document.getElementById('comprehensiveResults').style.display = 'block';
+    }
+}
+
+// ============= CHIT GENERATOR =============
+
+let currentChitType = 'poi'; // Default type
+
+function selectChitType(type) {
+    currentChitType = type;
+
+    // Update button styles
+    ['poi', 'lobby', 'general', 'directive', 'respond'].forEach(t => {
+        const btn = document.getElementById(`chitType${t.charAt(0).toUpperCase() + t.slice(1)}`);
+        if (t === type) {
+            btn.classList.remove('btn-secondary');
+            btn.classList.add('btn-primary');
+        } else {
+            btn.classList.remove('btn-primary');
+            btn.classList.add('btn-secondary');
+        }
+    });
+
+    // Hide all specific fields
+    document.getElementById('chitPOIFields').style.display = 'none';
+    document.getElementById('chitLobbyFields').style.display = 'none';
+    document.getElementById('chitGeneralFields').style.display = 'none';
+    document.getElementById('chitDirectiveFields').style.display = 'none';
+    document.getElementById('chitResponseFields').style.display = 'none';
+
+    // Show relevant fields
+    const fieldsMap = {
+        'poi': 'chitPOIFields',
+        'lobby': 'chitLobbyFields',
+        'general': 'chitGeneralFields',
+        'directive': 'chitDirectiveFields',
+        'respond': 'chitResponseFields'
+    };
+
+    if (fieldsMap[type]) {
+        document.getElementById(fieldsMap[type]).style.display = 'block';
+    }
+}
+
+async function generateChit() {
+    const myCountry = document.getElementById('chitMyCountry').value;
+    const toCountry = document.getElementById('chitToCountry').value;
+
+    if (!toCountry && currentChitType !== 'respond') {
+        showNotification('Please enter the target country', 'error');
+        return;
+    }
+
+    // Show loading
+    document.getElementById('chitLoading').style.display = 'block';
+    document.getElementById('chitOutput').style.display = 'none';
+
+    try {
+        let result;
+
+        switch (currentChitType) {
+            case 'poi':
+                result = await generatePOIChit(toCountry, myCountry);
+                break;
+            case 'lobby':
+                result = await generateLobbyChit(toCountry, myCountry);
+                break;
+            case 'general':
+                result = await generateGeneralChit(toCountry, myCountry);
+                break;
+            case 'directive':
+                result = await generateDirectiveChit(toCountry, myCountry);
+                break;
+            case 'respond':
+                result = await generateResponseChit(myCountry);
+                break;
+        }
+
+        if (result && result.chit) {
+            document.getElementById('chitContent').innerHTML = marked.parse(result.chit);
+            document.getElementById('chitOutput').style.display = 'block';
+            showNotification('Chit generated successfully!', 'success');
+        }
+
+    } catch (error) {
+        showNotification('Error generating chit: ' + error.message, 'error');
+    } finally {
+        document.getElementById('chitLoading').style.display = 'none';
+    }
+}
+
+async function generatePOIChit(toCountry, myCountry) {
+    const topic = document.getElementById('chitPOITopic').value;
+    const question = document.getElementById('chitPOIQuestion').value;
+
+    const response = await fetch(`${API_BASE}/chit/poi`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            to_country: toCountry,
+            my_country: myCountry,
+            topic: topic,
+            question: question
+        })
+    });
+
+    return await response.json();
+}
+
+async function generateLobbyChit(toCountry, myCountry) {
+    const topic = document.getElementById('chitLobbyTopic').value;
+    const purpose = document.getElementById('chitLobbyPurpose').value;
+
+    const response = await fetch(`${API_BASE}/chit/lobby`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            to_country: toCountry,
+            my_country: myCountry,
+            topic: topic,
+            purpose: purpose
+        })
+    });
+
+    return await response.json();
+}
+
+async function generateGeneralChit(toCountry, myCountry) {
+    const message = document.getElementById('chitGeneralMessage').value;
+    const tone = document.getElementById('chitGeneralTone').value;
+
+    if (!message) {
+        showNotification('Please enter a message', 'error');
+        throw new Error('Message required');
+    }
+
+    const response = await fetch(`${API_BASE}/chit/general`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            to_country: toCountry,
+            my_country: myCountry,
+            message: message,
+            tone: tone
+        })
+    });
+
+    return await response.json();
+}
+
+async function generateDirectiveChit(toCountry, myCountry) {
+    const directive = document.getElementById('chitDirectiveText').value;
+    const urgency = document.getElementById('chitDirectiveUrgency').value;
+
+    if (!directive) {
+        showNotification('Please enter a directive', 'error');
+        throw new Error('Directive required');
+    }
+
+    const response = await fetch(`${API_BASE}/chit/directive`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            to_country: toCountry,
+            my_country: myCountry,
+            directive: directive,
+            urgency: urgency
+        })
+    });
+
+    return await response.json();
+}
+
+async function generateResponseChit(myCountry) {
+    const originalChit = document.getElementById('chitOriginalText').value;
+    const responseType = document.getElementById('chitResponseType').value;
+
+    if (!originalChit) {
+        showNotification('Please paste the original chit', 'error');
+        throw new Error('Original chit required');
+    }
+
+    const response = await fetch(`${API_BASE}/chit/respond`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            original_chit: originalChit,
+            my_country: myCountry,
+            response_type: responseType
+        })
+    });
+
+    return await response.json();
+}
+
+function copyChit() {
+    const chitContent = document.getElementById('chitContent').innerText;
+
+    navigator.clipboard.writeText(chitContent).then(() => {
+        showNotification('Chit copied to clipboard!', 'success');
+    }).catch(() => {
+        showNotification('Failed to copy to clipboard', 'error');
+    });
+}
+
+// Initialize chit type selection on page load
+document.addEventListener('DOMContentLoaded', function() {
+    // Set default chit type
+    setTimeout(() => {
+        if (typeof selectChitType === 'function') {
+            selectChitType('poi');
+        }
+    }, 100);
+});
+
+console.log('✅ New features loaded: Setup, Chat History, Templates, Speech Rating, Chit Generator');

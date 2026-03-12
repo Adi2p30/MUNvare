@@ -1,11 +1,43 @@
 // MUNvare Frontend JavaScript
 
-const API_BASE = 'http://localhost:5000/api';
+const API_BASE = 'http://localhost:8000/api';
 
 // Global state
 let chatHistory = [];
 let currentNoteId = null;
 let currentNote = null;
+
+// ============= Helper Functions for Icons =============
+
+function getHeroIcon(name, size = 'sm') {
+    const icons = {
+        'folder': '<svg class="icon icon-__SIZE__" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"/></svg>',
+        'save': '<svg class="icon icon-__SIZE__" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"/></svg>',
+        'search': '<svg class="icon icon-__SIZE__" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>',
+        'document': '<svg class="icon icon-__SIZE__" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>',
+        'users': '<svg class="icon icon-__SIZE__" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/></svg>',
+        'pencil': '<svg class="icon icon-__SIZE__" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>',
+        'questionMarkCircle': '<svg class="icon icon-__SIZE__" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>',
+        'checkCircle': '<svg class="icon icon-__SIZE__" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>',
+        'exclamationCircle': '<svg class="icon icon-__SIZE__" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>',
+        'trophy': '<svg class="icon icon-__SIZE__" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z"/></svg>',
+        'trash': '<svg class="icon icon-__SIZE__" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>',
+        'calendar': '<svg class="icon icon-__SIZE__" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>',
+    };
+
+    return (icons[name] || icons['folder']).replace('__SIZE__', size);
+}
+
+function getFolderIcon(folderId, size = 'sm') {
+    const folderIcons = {
+        'lobbying': getHeroIcon('users', size),
+        'research': getHeroIcon('search', size),
+        'documentation': getHeroIcon('document', size),
+        'poi': getHeroIcon('questionMarkCircle', size),
+        'general': getHeroIcon('folder', size),
+    };
+    return folderIcons[folderId] || getHeroIcon('pencil', size);
+}
 
 // ============= Navigation =============
 
@@ -36,17 +68,38 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 function navigateTo(section) {
+    console.log('Navigating to:', section);
+
+    // Hide/show sidebar based on section
+    if (section === 'start-screen') {
+        document.body.classList.add('on-start-screen');
+    } else {
+        document.body.classList.remove('on-start-screen');
+    }
+
     // Update nav links
     document.querySelectorAll('.nav-link').forEach(link => {
         link.classList.remove('active');
     });
-    document.querySelector(`[data-section="${section}"]`).classList.add('active');
+
+    // Only update nav link if it exists
+    const navLink = document.querySelector(`[data-section="${section}"]`);
+    if (navLink) {
+        navLink.classList.add('active');
+    }
 
     // Update content sections
     document.querySelectorAll('.content-section').forEach(sec => {
         sec.classList.remove('active');
     });
-    document.getElementById(section).classList.add('active');
+
+    const targetSection = document.getElementById(section);
+    if (targetSection) {
+        targetSection.classList.add('active');
+        console.log('Successfully navigated to:', section);
+    } else {
+        console.error('Section not found:', section);
+    }
 }
 
 // ============= API Health Check =============
@@ -231,7 +284,7 @@ async function loadNotes() {
             div.innerHTML = `
                 <div class="note-item-title">${folderBadge} ${note.title}</div>
                 <div class="note-item-date">${new Date(note.updated_at).toLocaleDateString()}</div>
-                <button onclick="showNoteFolderMenu(event, '${note.id}')" class="note-folder-btn" title="Move to folder">📁</button>
+                <button onclick="showNoteFolderMenu(event, '${note.id}')" class="note-folder-btn" title="Move to folder">${getHeroIcon('folder', 'sm')}</button>
             `;
 
             div.onclick = (e) => {
@@ -351,6 +404,9 @@ async function loadNote(noteId) {
         document.getElementById('noteTitle').value = note.title;
         document.getElementById('noteContent').value = note.content;
 
+        // Reset to edit mode
+        toggleNoteView('edit');
+
         if (note.analysis) {
             showNoteAnalysis(note.analysis);
         } else {
@@ -382,6 +438,33 @@ async function saveNote() {
 
     } catch (error) {
         showNotification('Error saving note', 'error');
+    }
+}
+
+function toggleNoteView(mode) {
+    const editBtn = document.getElementById('editModeBtn');
+    const previewBtn = document.getElementById('previewModeBtn');
+    const contentArea = document.getElementById('noteContent');
+    const previewArea = document.getElementById('notePreview');
+
+    if (mode === 'edit') {
+        editBtn.classList.add('btn-primary');
+        editBtn.classList.remove('btn-secondary');
+        previewBtn.classList.remove('btn-primary');
+        previewBtn.classList.add('btn-secondary');
+        contentArea.style.display = 'block';
+        previewArea.style.display = 'none';
+    } else {
+        previewBtn.classList.add('btn-primary');
+        previewBtn.classList.remove('btn-secondary');
+        editBtn.classList.remove('btn-primary');
+        editBtn.classList.add('btn-secondary');
+        contentArea.style.display = 'none';
+        previewArea.style.display = 'block';
+
+        // Render markdown
+        const markdown = contentArea.value;
+        previewArea.innerHTML = renderMarkdown(markdown);
     }
 }
 
@@ -482,7 +565,16 @@ function closePremadeNote() {
 }
 
 function renderMarkdown(text) {
-    // Simple markdown rendering
+    // Use marked.js for markdown rendering if available
+    if (typeof marked !== 'undefined') {
+        marked.setOptions({
+            breaks: true,
+            gfm: true
+        });
+        return marked.parse(text);
+    }
+
+    // Fallback simple markdown rendering
     return text
         .replace(/^### (.+)$/gm, '<h3>$1</h3>')
         .replace(/^## (.+)$/gm, '<h2>$1</h2>')
@@ -520,9 +612,13 @@ async function generatePOI() {
         });
 
         const data = await response.json();
-        const html = data.questions.map((q, i) => `<p><strong>${i+1}.</strong> ${q}</p>`).join('');
-        output.innerHTML = `<h4>POI Questions</h4>${html}
-            <button onclick="saveToNotes('POI Questions - ${country}', \`${html}\`, 'poi')" class="btn btn-secondary" style="margin-top: 12px;">Save to Notes</button>`;
+        const markdown = data.questions.map((q, i) => `**${i+1}.** ${q}`).join('\n\n');
+        const html = renderMarkdown(markdown);
+        output.innerHTML = `
+            <h4>POI Questions</h4>
+            <div class="markdown-content">${html}</div>
+            <button onclick="saveResearchToNotes('POI Questions - ${country}', \`${markdown.replace(/`/g, '\\`')}\`, 'poi')" class="btn btn-primary" style="margin-top: 16px;">💾 Save to Notes (POI Folder)</button>
+        `;
 
     } catch (error) {
         output.textContent = 'Error generating questions';
@@ -550,8 +646,12 @@ async function researchForeignPolicy() {
         });
 
         const data = await response.json();
-        output.innerHTML = `<h4>Foreign Policy Analysis</h4><div style="white-space: pre-wrap;">${data.policy}</div>
-            <button onclick="saveToNotes('Foreign Policy - ${country} - ${topic}', \`${data.policy.replace(/`/g, '\\`')}\`, 'research')" class="btn btn-secondary" style="margin-top: 12px;">Save to Notes</button>`;
+        const html = renderMarkdown(data.policy);
+        output.innerHTML = `
+            <h4>Foreign Policy Analysis</h4>
+            <div class="markdown-content">${html}</div>
+            <button onclick="saveResearchToNotes('Foreign Policy - ${country} - ${topic}', \`${data.policy.replace(/`/g, '\\`')}\`, 'research')" class="btn btn-primary" style="margin-top: 16px;">💾 Save to Notes (Research Folder)</button>
+        `;
 
     } catch (error) {
         output.textContent = 'Error researching foreign policy';
@@ -579,9 +679,13 @@ async function suggestModCaucus() {
         });
 
         const data = await response.json();
-        const html = data.topics.map((t, i) => `<p><strong>${i+1}.</strong> ${t}</p>`).join('');
-        output.innerHTML = `<h4>Suggested Topics</h4>${html}
-            <button onclick="saveToNotes('ModCaucus Topics - ${agenda}', \`${html}\`, 'general')" class="btn btn-secondary" style="margin-top: 12px;">Save to Notes</button>`;
+        const markdown = data.topics.map((t, i) => `**${i+1}.** ${t}`).join('\n\n');
+        const html = renderMarkdown(markdown);
+        output.innerHTML = `
+            <h4>Suggested Topics</h4>
+            <div class="markdown-content">${html}</div>
+            <button onclick="saveResearchToNotes('ModCaucus Topics - ${agenda}', \`${markdown.replace(/`/g, '\\`')}\`, 'general')" class="btn btn-primary" style="margin-top: 16px;">💾 Save to Notes (General Folder)</button>
+        `;
 
     } catch (error) {
         output.textContent = 'Error generating suggestions';
@@ -609,8 +713,12 @@ async function generateCountryProfile() {
         });
 
         const data = await response.json();
-        output.innerHTML = `<h4>Country Profile: ${country}</h4><div style="white-space: pre-wrap;">${data.profile}</div>
-            <button onclick="saveToNotes('Country Profile - ${country}', \`${data.profile.replace(/`/g, '\\`')}\`, 'research')" class="btn btn-secondary" style="margin-top: 12px;">Save to Notes</button>`;
+        const html = renderMarkdown(data.profile);
+        output.innerHTML = `
+            <h4>Country Profile: ${country}</h4>
+            <div class="markdown-content">${html}</div>
+            <button onclick="saveResearchToNotes('Country Profile - ${country}', \`${data.profile.replace(/`/g, '\\`')}\`, 'research')" class="btn btn-primary" style="margin-top: 16px;">💾 Save to Notes (Research Folder)</button>
+        `;
 
     } catch (error) {
         output.textContent = 'Error generating profile';
@@ -639,8 +747,12 @@ async function generateResolution() {
         });
 
         const data = await response.json();
-        output.innerHTML = `<h4>Draft Resolution</h4><div style="white-space: pre-wrap;">${data.resolution}</div>
-            <button onclick="saveToNotes('Resolution Draft - ${topic}', \`${data.resolution.replace(/`/g, '\\`')}\`, 'documentation')" class="btn btn-secondary" style="margin-top: 12px;">Save to Notes</button>`;
+        const html = renderMarkdown(data.resolution);
+        output.innerHTML = `
+            <h4>Draft Resolution</h4>
+            <div class="markdown-content">${html}</div>
+            <button onclick="saveResearchToNotes('Resolution Draft - ${topic}', \`${data.resolution.replace(/`/g, '\\`')}\`, 'documentation')" class="btn btn-primary" style="margin-top: 16px;">💾 Save to Notes (Documentation Folder)</button>
+        `;
 
     } catch (error) {
         output.textContent = 'Error generating resolution';
@@ -668,8 +780,12 @@ async function generateCrisisResponse() {
         });
 
         const data = await response.json();
-        output.innerHTML = `<h4>Crisis Response</h4><div style="white-space: pre-wrap;">${data.response}</div>
-            <button onclick="saveToNotes('Crisis Response - ${country}', \`${data.response.replace(/`/g, '\\`')}\`, 'general')" class="btn btn-secondary" style="margin-top: 12px;">Save to Notes</button>`;
+        const html = renderMarkdown(data.response);
+        output.innerHTML = `
+            <h4>Crisis Response</h4>
+            <div class="markdown-content">${html}</div>
+            <button onclick="saveResearchToNotes('Crisis Response - ${country}', \`${data.response.replace(/`/g, '\\`')}\`, 'general')" class="btn btn-primary" style="margin-top: 16px;">💾 Save to Notes (General Folder)</button>
+        `;
 
     } catch (error) {
         output.textContent = 'Error generating response';
@@ -698,8 +814,12 @@ async function prepareDebate() {
         });
 
         const data = await response.json();
-        output.innerHTML = `<h4>Debate Preparation</h4><div style="white-space: pre-wrap;">${data.preparation}</div>
-            <button onclick="saveToNotes('Debate Prep vs ${opponent}', \`${data.preparation.replace(/`/g, '\\`')}\`, 'general')" class="btn btn-secondary" style="margin-top: 12px;">Save to Notes</button>`;
+        const html = renderMarkdown(data.preparation);
+        output.innerHTML = `
+            <h4>Debate Preparation</h4>
+            <div class="markdown-content">${html}</div>
+            <button onclick="saveResearchToNotes('Debate Prep vs ${opponent}', \`${data.preparation.replace(/`/g, '\\`')}\`, 'general')" class="btn btn-primary" style="margin-top: 16px;">💾 Save to Notes (General Folder)</button>
+        `;
 
     } catch (error) {
         output.textContent = 'Error preparing debate';
@@ -736,15 +856,13 @@ async function findAllies() {
         const alliesData = await alliesResp.json();
         const opponentData = await opponentResp.json();
 
-        const combinedHTML = `
-            <h4>Potential Allies</h4>
-            <div style="white-space: pre-wrap;">${alliesData.allies || 'No data'}</div>
-            <h4 style="margin-top: 20px;">Opposition Analysis</h4>
-            <div style="white-space: pre-wrap;">${opponentData.opposition || 'No data'}</div>
-        `;
+        const combinedMarkdown = `## Potential Allies\n\n${alliesData.allies || 'No data'}\n\n## Opposition Analysis\n\n${opponentData.opposition || 'No data'}`;
+        const html = renderMarkdown(combinedMarkdown);
 
-        output.innerHTML = combinedHTML + `
-            <button onclick="saveToNotes('Allies & Opposition - ${topic}', \`${combinedHTML.replace(/`/g, '\\`')}\`, 'lobbying')" class="btn btn-secondary" style="margin-top: 12px;">Save to Notes</button>`;
+        output.innerHTML = `
+            <div class="markdown-content">${html}</div>
+            <button onclick="saveResearchToNotes('Allies & Opposition - ${topic}', \`${combinedMarkdown.replace(/`/g, '\\`')}\`, 'lobbying')" class="btn btn-primary" style="margin-top: 16px;">💾 Save to Notes (Lobbying Folder)</button>
+        `;
 
     } catch (error) {
         output.textContent = 'Error finding allies';
@@ -781,7 +899,7 @@ async function doComprehensiveResearch() {
         }
 
         // Show success message with created notes
-        let html = `<h3 style="color: var(--success);">✓ Research Complete!</h3>`;
+        let html = `<h3 style="color: var(--success);">Research Complete!</h3>`;
         html += `<p style="font-size: 16px; margin: 12px 0;"><strong>${data.notes_created.length} detailed strategic notes</strong> have been automatically saved to your folders!</p>`;
 
         html += '<div style="background: var(--bg-secondary); padding: 16px; border-radius: 8px; margin-top: 16px;">';
@@ -789,13 +907,7 @@ async function doComprehensiveResearch() {
         html += '<ul style="list-style: none; padding: 0;">';
 
         data.notes_created.forEach(note => {
-            const folderIcons = {
-                'lobbying': '🤝',
-                'research': '🔍',
-                'documentation': '📄',
-                'poi': '❓'
-            };
-            const icon = folderIcons[note.folder] || '📝';
+            const icon = getFolderIcon(note.folder, 'sm');
             html += `<li style="padding: 8px; margin: 4px 0; background: var(--bg-tertiary); border-radius: 4px;">
                 ${icon} <strong>${note.title}</strong>
                 <div style="font-size: 12px; color: var(--text-secondary); margin-top: 4px;">
@@ -846,6 +958,43 @@ async function saveToNotes(title, content, folder) {
             showNotification('Error saving to notes', 'error');
         }
     } catch (error) {
+        showNotification('Error saving to notes', 'error');
+    }
+}
+
+async function saveResearchToNotes(title, content, folder) {
+    try {
+        // Get the folder name mapping
+        const folderMapping = {
+            'poi': 'POI',
+            'research': 'Research',
+            'lobbying': 'Lobbying',
+            'documentation': 'Documentation',
+            'general': 'General'
+        };
+
+        const response = await fetch(`${API_BASE}/notes/save-research`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ title, content, folder })
+        });
+
+        if (response.ok) {
+            const folderName = folderMapping[folder] || folder;
+            showNotification(`✅ Saved to ${folderName} folder!`, 'success');
+            loadNotes();
+
+            // Optionally switch to notes section to show the saved note
+            setTimeout(() => {
+                if (confirm(`Research saved! Would you like to view your notes?`)) {
+                    navigateTo('notes');
+                }
+            }, 500);
+        } else {
+            showNotification('Error saving to notes', 'error');
+        }
+    } catch (error) {
+        console.error('Error saving research to notes:', error);
         showNotification('Error saving to notes', 'error');
     }
 }
@@ -910,3 +1059,294 @@ function showNotification(message, type = 'info') {
     console.log(`[${type.toUpperCase()}] ${message}`);
     // You could implement a toast notification system here
 }
+
+// ============= STREAMING SUPPORT =============
+
+/**
+ * Handle Server-Sent Events (SSE) streaming
+ * @param {string} url - API endpoint URL
+ * @param {object} data - Request data
+ * @param {function} onProgress - Callback for progress updates
+ * @param {function} onComplete - Callback when complete
+ * @param {function} onError - Callback for errors
+ */
+function streamRequest(url, data, onProgress, onComplete, onError) {
+    // Use fetch with ReadableStream for SSE
+    fetch(url, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'text/event-stream'
+        },
+        body: JSON.stringify(data)
+    }).then(response => {
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = '';
+
+        function processStream() {
+            reader.read().then(({ done, value }) => {
+                if (done) {
+                    return;
+                }
+
+                // Decode the chunk and add to buffer
+                buffer += decoder.decode(value, { stream: true });
+
+                // Process complete SSE messages
+                const lines = buffer.split('\n\n');
+                buffer = lines.pop() || ''; // Keep incomplete message in buffer
+
+                lines.forEach(line => {
+                    if (line.startsWith('data: ')) {
+                        try {
+                            const jsonStr = line.substring(6); // Remove 'data: ' prefix
+                            const eventData = JSON.parse(jsonStr);
+
+                            if (eventData.stage === 'complete') {
+                                onComplete(eventData);
+                            } else if (eventData.stage === 'error') {
+                                onError(eventData.error || 'Unknown error');
+                            } else {
+                                onProgress(eventData);
+                            }
+                        } catch (e) {
+                            console.error('Error parsing SSE message:', e);
+                        }
+                    }
+                });
+
+                // Continue reading
+                processStream();
+            }).catch(error => {
+                onError(error.message || 'Stream error');
+            });
+        }
+
+        processStream();
+
+    }).catch(error => {
+        onError(error.message || 'Connection error');
+    });
+}
+
+/**
+ * Execute comprehensive research pipeline with streaming progress
+ */
+async function executeComprehensiveStreamingResearch() {
+    const country = document.getElementById('autoCountry')?.value;
+    const topic = document.getElementById('autoTopic')?.value;
+    const committee = document.getElementById('autoCommittee')?.value;
+
+    if (!country || !topic) {
+        showNotification('Please fill in country and topic', 'error');
+        return;
+    }
+
+    const output = document.getElementById('autoResearchOutput');
+    output.style.display = 'block';
+    output.innerHTML = '<div class="streaming-progress"></div>';
+
+    const progressContainer = output.querySelector('.streaming-progress');
+    const stages = [];
+
+    // Progress callback
+    function onProgress(update) {
+        console.log('Progress:', update);
+
+        // Find or create stage element
+        let stageElement = progressContainer.querySelector(`[data-stage="${update.stage}"]`);
+
+        if (!stageElement) {
+            stageElement = document.createElement('div');
+            stageElement.className = 'streaming-stage';
+            stageElement.setAttribute('data-stage', update.stage);
+            progressContainer.appendChild(stageElement);
+        }
+
+        // Update stage content
+        const statusIcon = update.message.startsWith('✓') ? '✓' :
+                          update.message.startsWith('✗') ? '✗' : '⏳';
+
+        stageElement.innerHTML = `
+            <span class="stage-icon">${statusIcon}</span>
+            <span class="stage-message">${update.message}</span>
+        `;
+
+        // Add success/error styling
+        if (update.message.startsWith('✓')) {
+            stageElement.classList.add('stage-complete');
+        } else if (update.message.startsWith('✗')) {
+            stageElement.classList.add('stage-error');
+        }
+    }
+
+    // Complete callback
+    function onComplete(result) {
+        console.log('Complete:', result);
+
+        const finalOutput = result.data?.formatted_output || result.data?.output || 'Research complete!';
+
+        output.innerHTML = `
+            <div class="stream-complete">
+                <h3 style="color: var(--success);">✅ Comprehensive Research Complete!</h3>
+                <div class="research-output">
+                    ${marked.parse ? marked.parse(finalOutput) : finalOutput}
+                </div>
+                <button class="btn btn-primary" onclick="saveCurrentResearch('${country}', '${topic}')">
+                    Save to Notes
+                </button>
+            </div>
+        `;
+
+        showNotification('Research pipeline completed!', 'success');
+        loadNotes(); // Refresh notes list
+    }
+
+    // Error callback
+    function onError(error) {
+        console.error('Streaming error:', error);
+        output.innerHTML = `
+            <div class="stream-error">
+                <p style="color: var(--danger);">❌ Error: ${error}</p>
+                <button class="btn btn-secondary" onclick="executeComprehensiveStreamingResearch()">
+                    Retry
+                </button>
+            </div>
+        `;
+        showNotification('Error in research pipeline', 'error');
+    }
+
+    // Start streaming
+    streamRequest(
+        `${API_BASE}/research/comprehensive-stream`,
+        { country, topic, committee },
+        onProgress,
+        onComplete,
+        onError
+    );
+}
+
+/**
+ * Execute crisis response pipeline with streaming
+ */
+async function executeCrisisStreamingResponse() {
+    const country = prompt('Enter your country:');
+    const crisis = prompt('Describe the crisis situation:');
+
+    if (!country || !crisis) {
+        showNotification('Country and crisis description required', 'error');
+        return;
+    }
+
+    const output = document.getElementById('autoResearchOutput');
+    output.style.display = 'block';
+    output.innerHTML = '<div class="streaming-progress crisis-mode"></div>';
+
+    const progressContainer = output.querySelector('.streaming-progress');
+
+    streamRequest(
+        `${API_BASE}/research/crisis-stream`,
+        { country, crisis },
+        (update) => {
+            let stageElement = progressContainer.querySelector(`[data-stage="${update.stage}"]`);
+            if (!stageElement) {
+                stageElement = document.createElement('div');
+                stageElement.className = 'streaming-stage crisis';
+                stageElement.setAttribute('data-stage', update.stage);
+                progressContainer.appendChild(stageElement);
+            }
+
+            const statusIcon = update.message.startsWith('✓') ? '✓' : '🚨';
+            stageElement.innerHTML = `
+                <span class="stage-icon">${statusIcon}</span>
+                <span class="stage-message">${update.message}</span>
+            `;
+
+            if (update.message.startsWith('✓')) {
+                stageElement.classList.add('stage-complete');
+            }
+        },
+        (result) => {
+            const finalOutput = result.data?.formatted_output || result.data?.output || 'Crisis response ready!';
+            output.innerHTML = `
+                <div class="stream-complete crisis-complete">
+                    <h3>🚨 Crisis Response Plan Ready</h3>
+                    <div class="research-output">${marked.parse ? marked.parse(finalOutput) : finalOutput}</div>
+                </div>
+            `;
+            showNotification('Crisis response generated!', 'success');
+        },
+        (error) => {
+            output.innerHTML = `<p style="color: var(--danger);">❌ Error: ${error}</p>`;
+            showNotification('Error generating crisis response', 'error');
+        }
+    );
+}
+
+/**
+ * Execute debate mastery pipeline with streaming
+ */
+async function executeDebateMasteryStreaming() {
+    const country = prompt('Enter your country:');
+    const topic = prompt('Enter debate topic:');
+    const opponent = prompt('Enter opponent country (optional):') || '';
+
+    if (!country || !topic) {
+        showNotification('Country and topic required', 'error');
+        return;
+    }
+
+    const output = document.getElementById('autoResearchOutput');
+    output.style.display = 'block';
+    output.innerHTML = '<div class="streaming-progress debate-mode"></div>';
+
+    const progressContainer = output.querySelector('.streaming-progress');
+
+    streamRequest(
+        `${API_BASE}/research/debate-mastery-stream`,
+        { country, topic, opponent_country: opponent },
+        (update) => {
+            let stageElement = progressContainer.querySelector(`[data-stage="${update.stage}"]`);
+            if (!stageElement) {
+                stageElement = document.createElement('div');
+                stageElement.className = 'streaming-stage debate';
+                stageElement.setAttribute('data-stage', update.stage);
+                progressContainer.appendChild(stageElement);
+            }
+
+            const statusIcon = update.message.startsWith('✓') ? '✓' : '🎭';
+            stageElement.innerHTML = `
+                <span class="stage-icon">${statusIcon}</span>
+                <span class="stage-message">${update.message}</span>
+            `;
+
+            if (update.message.startsWith('✓')) {
+                stageElement.classList.add('stage-complete');
+            }
+        },
+        (result) => {
+            const finalOutput = result.data?.formatted_output || result.data?.output || 'Debate package ready!';
+            output.innerHTML = `
+                <div class="stream-complete debate-complete">
+                    <h3>🏆 Debate Mastery Package Ready</h3>
+                    <div class="research-output">${marked.parse ? marked.parse(finalOutput) : finalOutput}</div>
+                </div>
+            `;
+            showNotification('Debate preparation complete!', 'success');
+        },
+        (error) => {
+            output.innerHTML = `<p style="color: var(--danger);">❌ Error: ${error}</p>`;
+            showNotification('Error generating debate prep', 'error');
+        }
+    );
+}
+
+// Add window functions for global access
+window.executeComprehensiveStreamingResearch = executeComprehensiveStreamingResearch;
+window.executeCrisisStreamingResponse = executeCrisisStreamingResponse;
+window.executeDebateMasteryStreaming = executeDebateMasteryStreaming;

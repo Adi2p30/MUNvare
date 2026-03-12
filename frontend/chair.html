@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MUNvare — Chair Interface</title>
+    <link rel="stylesheet" href="chair.css">
+</head>
+<body>
+
+<!-- ===================== SETUP SCREEN ===================== -->
+<div id="setup-screen">
+    <div class="setup-card">
+        <div class="setup-logo">
+            <h1>MUNvare</h1>
+            <p>Committee Management Platform</p>
+            <span class="setup-badge">Chair Interface</span>
+        </div>
+        <div class="setup-form">
+            <div class="form-group">
+                <label for="committee-name">Committee Name</label>
+                <input
+                    type="text"
+                    id="committee-name"
+                    class="input-field"
+                    placeholder="e.g. UNSC, DISEC, WHO…"
+                    autocomplete="off"
+                    onkeydown="if(event.key==='Enter') document.getElementById('agenda').focus()"
+                >
+            </div>
+            <div class="form-group">
+                <label for="agenda">Agenda Item</label>
+                <textarea
+                    id="agenda"
+                    class="input-field"
+                    placeholder="e.g. The situation in the Middle East…"
+                    rows="3"
+                ></textarea>
+            </div>
+            <button class="btn btn-primary btn-lg" onclick="setupRoom()">
+                Create Room
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- ===================== MAIN INTERFACE ===================== -->
+<div id="main-interface" style="display:none; flex-direction:column; height:100vh;">
+
+    <!-- TOP BAR -->
+    <div class="top-bar">
+        <span class="top-bar-brand">MUNvare</span>
+        <div class="top-bar-divider"></div>
+        <span class="committee-title" id="committee-title">Committee</span>
+        <div class="top-bar-divider"></div>
+        <div class="room-code-wrapper" onclick="copyRoomCode()" title="Click to copy room code">
+            <span class="room-code-label">Room</span>
+            <span id="room-code-display">——</span>
+            <span class="copy-icon">&#10697;</span>
+        </div>
+        <span class="status-badge inactive" id="committee-status">INACTIVE</span>
+        <button class="btn btn-outline" id="clear-room-btn" style="margin-left:auto; font-size:12px; padding:5px 10px;">
+            &#10005; Leave Room
+        </button>
+    </div>
+
+    <!-- AGENDA BAR -->
+    <div class="agenda-bar">
+        <span>Agenda:</span>
+        <strong id="agenda-bar-text">—</strong>
+    </div>
+
+    <!-- INTERFACE BODY -->
+    <div class="interface-body">
+
+        <!-- LEFT PANEL: DELEGATES -->
+        <div class="left-panel">
+            <div class="panel-title">
+                Delegates
+                <span class="panel-count" id="delegate-count">0/0</span>
+            </div>
+
+            <div class="delegate-search">
+                <input
+                    type="text"
+                    id="delegate-search"
+                    class="search-input"
+                    placeholder="Search countries…"
+                    autocomplete="off"
+                >
+            </div>
+
+            <!-- Delegate Setup (shown after room created) -->
+            <div id="delegate-setup" style="display:none;">
+                <textarea
+                    id="delegate-list-input"
+                    placeholder="Enter one country per line:&#10;United States&#10;China&#10;France&#10;…"
+                    rows="5"
+                ></textarea>
+                <button class="btn btn-primary" style="width:100%" onclick="startRollCall()">
+                    Start Roll Call
+                </button>
+            </div>
+
+            <!-- Rendered delegate list -->
+            <div id="delegate-list"></div>
+        </div>
+
+        <!-- MAIN AREA -->
+        <div class="main-area">
+
+            <!-- TAB BAR -->
+            <div class="tab-bar">
+                <button class="tab-btn active" data-tab="gsl">GSL</button>
+                <button class="tab-btn" data-tab="mod">Mod Caucus</button>
+                <button class="tab-btn" data-tab="unmod">Unmod Caucus</button>
+                <button class="tab-btn" data-tab="voting">Voting</button>
+                <button class="tab-btn" data-tab="docs">Documents</button>
+            </div>
+
+            <!-- TAB CONTENT AREA -->
+            <div class="tab-content-area">
+
+                <!-- GSL TAB -->
+                <div id="gsl-panel" class="tab-content active" style="display:block;">
+                    <div class="panel-header">
+                        <h3>General Speakers List</h3>
+                        <span class="status-badge closed">CLOSED</span>
+                    </div>
+                    <div class="timer-display">
+                        <div class="timer-value" id="gsl-timer-display">1:30</div>
+                        <div class="current-speaker">No current speaker</div>
+                        <div class="timer-controls">
+                            <button class="btn btn-success" onclick="startTimer('gsl.timer')">&#9654; Start</button>
+                            <button class="btn btn-secondary" onclick="pauseTimer('gsl.timer')">&#9646;&#9646; Pause</button>
+                            <button class="btn btn-outline" onclick="resetTimer('gsl.timer')">&#8634; Reset</button>
+                            <button class="btn btn-accent" onclick="nextSpeaker()">Next &#9658;&#9658;</button>
+                        </div>
+                    </div>
+                    <div class="speaker-controls">
+                        <div class="gsl-settings">
+                            Speaker time:
+                            <input type="number" id="gsl-speaker-time" value="90" style="width:64px"> sec
+                        </div>
+                        <div class="add-speaker">
+                            <select id="gsl-add-country" class="input-field">
+                                <option value="">-- Select country --</option>
+                            </select>
+                            <button class="btn btn-primary" onclick="addToGSL()">Add</button>
+                        </div>
+                    </div>
+                    <div class="speaker-list">
+                        <h4>Speakers Queue (0)</h4>
+                        <div class="empty-state">No speakers queued</div>
+                    </div>
+                    <div class="gsl-actions">
+                        <button class="btn btn-primary" onclick="openGSL()">Open GSL</button>
+                        <button class="btn btn-secondary" onclick="closeGSL()">Close GSL</button>
+                    </div>
+                </div>
+
+                <!-- MOD CAUCUS TAB -->
+                <div id="mod-panel" class="tab-content" style="display:none;">
+                    <div class="panel-header">
+                        <h3>Moderated Caucus</h3>
+                        <span class="status-badge inactive">INACTIVE</span>
+                    </div>
+                    <div class="caucus-setup">
+                        <input type="text" id="mod-topic" placeholder="Caucus topic" class="input-field">
+                        <div class="time-inputs">
+                            <label>Total time (s): <input type="number" id="mod-total-time" value="300" class="input-field" style="width:80px"></label>
+                            <label>Speaker time (s): <input type="number" id="mod-speaker-time" value="60" class="input-field" style="width:80px"></label>
+                        </div>
+                        <button class="btn btn-primary" onclick="startModCaucus()">Start Mod Caucus</button>
+                    </div>
+                </div>
+
+                <!-- UNMOD CAUCUS TAB -->
+                <div id="unmod-panel" class="tab-content" style="display:none;">
+                    <div class="panel-header">
+                        <h3>Unmoderated Caucus</h3>
+                        <span class="status-badge inactive">INACTIVE</span>
+                    </div>
+                    <div class="caucus-setup">
+                        <input type="text" id="unmod-purpose" placeholder="Purpose (optional)" class="input-field">
+                        <label class="time-inputs" style="gap:8px;align-items:center;">Duration (s):
+                            <input type="number" id="unmod-duration" value="300" class="input-field" style="width:90px">
+                        </label>
+                        <button class="btn btn-primary" onclick="startUnmodCaucus()">Start Unmod Caucus</button>
+                    </div>
+                </div>
+
+                <!-- VOTING TAB -->
+                <div id="voting-panel" class="tab-content" style="display:none;">
+                    <div class="panel-header">
+                        <h3>Voting Procedure</h3>
+                        <span class="status-badge inactive">CLOSED</span>
+                    </div>
+                    <div class="voting-setup">
+                        <input type="text" id="voting-motion" placeholder="Motion or resolution title" class="input-field">
+                        <select id="voting-type" class="input-field">
+                            <option value="procedural">Procedural</option>
+                            <option value="substantive">Substantive</option>
+                        </select>
+                        <button class="btn btn-primary" onclick="startVoting()">Open Voting</button>
+                    </div>
+                </div>
+
+                <!-- DOCUMENTS TAB -->
+                <div id="docs-panel" class="tab-content" style="display:none;">
+                    <div class="panel-header">
+                        <h3>Working Papers &amp; Draft Resolutions</h3>
+                    </div>
+                    <div class="docs-section">
+                        <h4>Working Papers (0)</h4>
+                        <p class="empty-state">No working papers submitted</p>
+                    </div>
+                    <div class="docs-section">
+                        <h4>Draft Resolutions (0)</h4>
+                        <p class="empty-state">No draft resolutions</p>
+                    </div>
+                </div>
+
+            </div><!-- /tab-content-area -->
+        </div><!-- /main-area -->
+
+        <!-- RIGHT PANEL -->
+        <div class="right-panel">
+
+            <!-- Motions Queue -->
+            <div class="right-section" style="flex:0 0 auto;">
+                <div class="right-section-header">
+                    Motions
+                    <span class="badge-count" id="motions-badge" style="display:none;"></span>
+                </div>
+                <div class="right-section-body">
+                    <div id="motions-list">
+                        <p class="empty-state">No pending motions</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Points Queue -->
+            <div class="right-section" style="flex:0 0 auto;">
+                <div class="right-section-header">
+                    Points
+                    <span class="badge-count" id="points-badge" style="display:none;"></span>
+                </div>
+                <div class="right-section-body">
+                    <div id="points-list">
+                        <p class="empty-state">No pending points</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right of Reply Queue -->
+            <div class="right-section" style="flex:0 0 auto;">
+                <div class="right-section-header">
+                    Right of Reply
+                    <span class="badge-count" id="ror-badge" style="display:none;"></span>
+                </div>
+                <div class="right-section-body">
+                    <div id="ror-list"></div>
+                </div>
+            </div>
+
+            <!-- Announcements -->
+            <div class="right-section" style="flex:1; min-height:0;">
+                <div class="right-section-header">Announcement</div>
+                <div class="announcement-section">
+                    <label for="announcement-input">Message (Ctrl+Enter to send)</label>
+                    <textarea
+                        id="announcement-input"
+                        placeholder="Type an announcement to broadcast to all delegates…"
+                    ></textarea>
+                    <button class="btn btn-primary" style="width:100%" onclick="sendAnnouncement()">
+                        Broadcast Announcement
+                    </button>
+                </div>
+            </div>
+
+        </div><!-- /right-panel -->
+
+    </div><!-- /interface-body -->
+
+    <!-- BOTTOM BAR: SESSION CONTROLS -->
+    <div class="bottom-bar">
+        <span class="bottom-bar-label">Session:</span>
+        <button class="btn btn-secondary" onclick="startRollCallBtn()">
+            &#9745; Roll Call
+        </button>
+        <button class="btn btn-warning" onclick="suspendSession()">
+            &#9646;&#9646; Suspend
+        </button>
+        <button class="btn btn-success" onclick="resumeSession()">
+            &#9654; Resume
+        </button>
+        <button class="btn btn-danger" onclick="adjournSession()">
+            &#9632; Adjourn
+        </button>
+        <div class="bottom-bar-spacer"></div>
+        <button class="btn btn-primary" onclick="sendAnnouncement()">
+            &#128226; Announce
+        </button>
+    </div>
+
+</div><!-- /main-interface -->
+
+<script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+<script src="chair.js"></script>
+</body>
+</html>

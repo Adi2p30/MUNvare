@@ -4,7 +4,7 @@ Chat history manager
 import os
 import json
 from datetime import datetime
-from typing import List, Dict
+from typing import List, Dict, Optional
 
 class ChatManager:
     """Manages chat conversations and history"""
@@ -33,38 +33,50 @@ class ChatManager:
         with open(chat_file, 'w') as f:
             json.dump(chat, f, indent=2)
 
-    def load_chat(self, chat_id: str) -> Dict:
+    def load_chat(self, chat_id: str) -> Optional[Dict]:
         """Load a chat by ID"""
         chat_file = os.path.join(self.chats_dir, f"{chat_id}.json")
         if os.path.exists(chat_file):
-            with open(chat_file, 'r') as f:
-                return json.load(f)
+            try:
+                with open(chat_file, 'r') as f:
+                    return json.load(f)
+            except (json.JSONDecodeError, IOError) as e:
+                print(f"Error loading chat {chat_id}: {e}")
+                return None
         return None
 
     def get_all_chats(self) -> List[Dict]:
         """Get all chats (metadata only)"""
         chats = []
+        if not os.path.exists(self.chats_dir):
+            return chats
+
         for filename in os.listdir(self.chats_dir):
             if filename.endswith('.json'):
                 chat_file = os.path.join(self.chats_dir, filename)
-                with open(chat_file, 'r') as f:
-                    chat = json.load(f)
-                    # Return metadata only
-                    chats.append({
-                        'id': chat['id'],
-                        'title': chat['title'],
-                        'message_count': len(chat['messages']),
-                        'created_at': chat['created_at'],
-                        'updated_at': chat['updated_at']
-                    })
+                try:
+                    with open(chat_file, 'r') as f:
+                        chat = json.load(f)
+                        # Return metadata only
+                        chats.append({
+                            'id': chat.get('id', filename[:-5]),
+                            'title': chat.get('title', 'Untitled Chat'),
+                            'message_count': len(chat.get('messages', [])),
+                            'created_at': chat.get('created_at', ''),
+                            'updated_at': chat.get('updated_at', '')
+                        })
+                except (json.JSONDecodeError, IOError, KeyError) as e:
+                    print(f"Error loading chat from {filename}: {e}")
+                    continue
         # Sort by updated time
-        chats.sort(key=lambda x: x['updated_at'], reverse=True)
+        chats.sort(key=lambda x: x.get('updated_at', ''), reverse=True)
         return chats
 
-    def add_message(self, chat_id: str, role: str, content: str):
+    def add_message(self, chat_id: str, role: str, content: str) -> Optional[Dict]:
         """Add a message to a chat"""
         chat = self.load_chat(chat_id)
         if not chat:
+            print(f"Chat {chat_id} not found")
             return None
 
         message = {
@@ -81,11 +93,17 @@ class ChatManager:
         self.save_chat(chat)
         return chat
 
-    def delete_chat(self, chat_id: str):
+    def delete_chat(self, chat_id: str) -> bool:
         """Delete a chat"""
         chat_file = os.path.join(self.chats_dir, f"{chat_id}.json")
         if os.path.exists(chat_file):
-            os.remove(chat_file)
+            try:
+                os.remove(chat_file)
+                return True
+            except IOError as e:
+                print(f"Error deleting chat {chat_id}: {e}")
+                return False
+        return False
 
     def get_chat_history_for_llm(self, chat_id: str, max_messages: int = 10) -> List[Dict]:
         """Get chat history formatted for LLM"""

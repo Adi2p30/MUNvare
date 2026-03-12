@@ -28,11 +28,19 @@ venv/
 env/
 ENV/
 
-# Data directories
+# Data directories (user-generated / personal data)
 data/chromadb/
 data/notes/
+data/notes_v2/
 data/speeches/
 data/premade_notes/
+data/chats/
+data/sessions/
+data/memory/
+data/active_memory/
+data/config/
+data/committee_flows/
+data/committee_states/
 
 # IDE
 .vscode/
@@ -51,3 +59,7 @@ Thumbs.db
 # Temporary files
 temp_speech.wav
 *.wav
+CLAUDE.md
+todo.md
+.envrc
+*.md

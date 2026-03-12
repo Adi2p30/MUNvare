@@ -3,8 +3,8 @@ Generate pre-made notes from the MUN book for quick reference
 """
 import os
 import json
-from vectordb import initialize_vector_db
-from ai_service import AIService
+from core.vectordb import initialize_vector_db
+from core.ai_service import AIService
 
 
 def generate_premade_notes():
