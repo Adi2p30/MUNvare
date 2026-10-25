@@ -2,6 +2,7 @@
 
 // Global state for current session
 let currentSession = null;
+window.currentSession = currentSession;
 
 // ============= Session Management Functions =============
 
@@ -158,6 +159,7 @@ async function selectSession(sessionId) {
 
         // Store current session
         currentSession = session;
+        window.currentSession = currentSession;
         localStorage.setItem('currentSessionId', sessionId);
         localStorage.setItem('currentSessionName', session.name);
 
@@ -185,6 +187,7 @@ async function selectSession(sessionId) {
 function switchSession() {
     // Clear current session
     currentSession = null;
+    window.currentSession = currentSession;
     localStorage.removeItem('currentSessionId');
 
     // Hide session display
@@ -358,3 +361,19 @@ window.addEventListener('DOMContentLoaded', function() {
         });
     }
 });
+
+// Attach the active session to /api/ requests. Guard so a second load does not wrap twice.
+if (!window.__sessionFetchWrapped) {
+    window.__sessionFetchWrapped = true;
+    const originalFetch = window.fetch.bind(window);
+    window.fetch = function(input, init) {
+        if (typeof input === 'string' && input.includes('/api/') && currentSession && currentSession.id != null) {
+            const headers = new Headers(init && init.headers);
+            if (!headers.has('X-Session-Id')) {
+                headers.set('X-Session-Id', String(currentSession.id));
+                init = Object.assign({}, init, { headers: headers });
+            }
+        }
+        return originalFetch(input, init);
+    };
+}

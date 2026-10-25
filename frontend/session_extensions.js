@@ -268,7 +268,9 @@ async function detachMemory(sessionId, sourceSessionId) {
     }
 }
 
-// Add CSS for import session items
+// Add CSS for import session items. Block-scoped so it does not clash with
+// the other classic scripts on index.html.
+{
 const style = document.createElement('style');
 style.textContent = `
     .import-session-item {
@@ -293,5 +295,6 @@ style.textContent = `
     }
 `;
 document.head.appendChild(style);
+}
 
 console.log('✅ Session extensions loaded: End Session, Summaries, Import/Export');
