@@ -382,6 +382,10 @@ async function updateFolderCounts() {
     try {
         const response = await fetch(`${API_BASE}/notes`);
         const notes = await response.json();
+        if (!response.ok || !Array.isArray(notes)) {
+            console.error('Error updating folder counts:', notes);
+            return;
+        }
 
         // Reset counts
         allFolders.forEach(folder => {
@@ -535,9 +539,11 @@ function showNotification(message, type = 'info') {
     }, 3000);
 }
 
-// Add CSS for animations
-const style = document.createElement('style');
-style.textContent = `
+// Add CSS for animations. Keep this binding block-scoped: these files are
+// classic scripts and share one global lexical scope.
+{
+    const style = document.createElement('style');
+    style.textContent = `
     @keyframes slideIn {
         from { transform: translateX(400px); opacity: 0; }
         to { transform: translateX(0); opacity: 1; }
@@ -547,7 +553,8 @@ style.textContent = `
         to { transform: translateX(400px); opacity: 0; }
     }
 `;
-document.head.appendChild(style);
+    document.head.appendChild(style);
+}
 
 // ============= SPEECH RATING & ANALYSIS =============
 

@@ -6,6 +6,7 @@ Each session represents a different MUN conference with its own data
 import os
 import json
 import uuid
+import fcntl
 from datetime import datetime
 from pathlib import Path
 
@@ -22,19 +23,41 @@ class SessionManager:
             self.sessions_file.write_text(json.dumps([]))
 
     def _load_sessions(self):
-        """Load all sessions from file"""
+        """Load all sessions from file.
+
+        Shared lock so a reader waits out a writer instead of seeing the
+        truncated file that ``open(..., 'w')`` used to leave behind.
+        """
+        self._ensure_sessions_file()
         try:
             with open(self.sessions_file, 'r') as f:
-                return json.load(f)
+                fcntl.flock(f.fileno(), fcntl.LOCK_SH)
+                try:
+                    raw = f.read()
+                finally:
+                    fcntl.flock(f.fileno(), fcntl.LOCK_UN)
+            if not raw.strip():
+                return []
+            data = json.loads(raw)
+            return data if isinstance(data, list) else []
         except Exception as e:
             print(f"Error loading sessions: {e}")
             return []
 
     def _save_sessions(self, sessions):
-        """Save sessions to file"""
+        """Save sessions to file while holding an exclusive lock."""
+        self._ensure_sessions_file()
         try:
-            with open(self.sessions_file, 'w') as f:
-                json.dump(sessions, f, indent=2)
+            with open(self.sessions_file, 'r+') as f:
+                fcntl.flock(f.fileno(), fcntl.LOCK_EX)
+                try:
+                    f.seek(0)
+                    f.truncate()
+                    json.dump(sessions, f, indent=2)
+                    f.flush()
+                    os.fsync(f.fileno())
+                finally:
+                    fcntl.flock(f.fileno(), fcntl.LOCK_UN)
         except Exception as e:
             print(f"Error saving sessions: {e}")
 
@@ -91,14 +114,19 @@ class SessionManager:
         sessions.sort(key=lambda x: x.get('last_accessed', x.get('created_at')), reverse=True)
         return sessions
 
-    def get_session(self, session_id):
-        """Get a specific session by ID"""
+    def get_session(self, session_id, touch=True):
+        """Get a specific session by ID.
+
+        ``touch=False`` is for request scoping. Looking up a session must not
+        rewrite sessions.json, or parallel API calls truncate the file and
+        the next lookup reports the session as missing.
+        """
         sessions = self._load_sessions()
         for session in sessions:
             if session['id'] == session_id:
-                # Update last accessed
-                session['last_accessed'] = datetime.now().isoformat()
-                self._save_sessions(sessions)
+                if touch:
+                    session['last_accessed'] = datetime.now().isoformat()
+                    self._save_sessions(sessions)
                 return session
         return None
 

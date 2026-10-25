@@ -176,7 +176,16 @@ Guidelines:
                     return message.content[0].text
 
             else:
-                raise ValueError("No API key found. Please set OPENAI_API_KEY, ANTHROPIC_API_KEY, or GEMINI_API_KEY")
+                # No usable provider: return before the handler below re-raises.
+                message = (
+                    "AI service not configured. Set GEMINI_API_KEY, OPENAI_API_KEY, "
+                    "or ANTHROPIC_API_KEY, or start Ollama."
+                )
+                if stream:
+                    def _unconfigured():
+                        yield message
+                    return _unconfigured()
+                return message
 
         except Exception as e:
             print(f"Error calling LLM: {e}")

@@ -97,6 +97,84 @@ def _get_chats_dir_for_request():
     return os.path.join(DATA_DIR, 'chats')
 
 
+def _note_file_for_request(note_id):
+    """Path to a note JSON file in the directory selected for this request."""
+    return os.path.join(_get_notes_dir_for_request(), f"{note_id}.json")
+
+
+# Global chat/config locations captured at startup. before_request restores these
+# whenever the request has no session id so a previous request cannot leak scope.
+_GLOBAL_CHATS_DIR = chat_manager.chats_dir
+_GLOBAL_CONFIG_DIR = config_manager.config_dir
+_GLOBAL_CONFIG_FILE = config_manager.config_file
+
+
+def _storage_paths_differ(current, new):
+    if isinstance(current, (str, os.PathLike)) and isinstance(new, (str, os.PathLike)):
+        return os.fspath(current) != os.fspath(new)
+    return current is not new
+
+
+def _assign_chat_and_config_dirs(chats_dir, config_dir, config_file, create=False):
+    """Point ChatManager and ConfigManager at these dirs. Reload config if they changed."""
+    if create:
+        chats_dir = os.fspath(chats_dir)
+        config_dir = os.fspath(config_dir)
+        config_file = os.fspath(config_file)
+        os.makedirs(chats_dir, exist_ok=True)
+        os.makedirs(config_dir, exist_ok=True)
+
+    chat_manager.chats_dir = chats_dir
+    config_changed = (
+        _storage_paths_differ(config_manager.config_dir, config_dir)
+        or _storage_paths_differ(config_manager.config_file, config_file)
+    )
+    config_manager.config_dir = config_dir
+    config_manager.config_file = config_file
+    if config_changed:
+        config_manager.config = config_manager.load_config()
+
+
+def _restore_global_chat_and_config():
+    _assign_chat_and_config_dirs(
+        _GLOBAL_CHATS_DIR, _GLOBAL_CONFIG_DIR, _GLOBAL_CONFIG_FILE, create=False
+    )
+
+
+def _use_session_chat_and_config(session_id):
+    chats_dir = session_manager.get_session_chats_dir(session_id)
+    config_dir = session_manager.get_session_dir(session_id) / 'config'
+    config_file = os.path.join(os.fspath(config_dir), 'mun_config.json')
+    _assign_chat_and_config_dirs(chats_dir, config_dir, config_file, create=True)
+
+
+def _session_lookup_exempt(path):
+    for prefix in ('/api/sessions', '/api/health'):
+        if path == prefix or path.startswith(prefix + '/'):
+            return True
+    return False
+
+
+@app.before_request
+def _scope_chat_and_config_to_session():
+    """Scope chats and delegate config to the request session, or restore globals."""
+    session_id = get_session_id_from_request()
+    if not session_id:
+        _restore_global_chat_and_config()
+        return None
+
+    session = session_manager.get_session(session_id, touch=False)
+    if not session:
+        _restore_global_chat_and_config()
+        path = request.path or ''
+        if path.startswith('/api/') and not _session_lookup_exempt(path):
+            return jsonify({'error': 'Session not found'}), 404
+        return None
+
+    _use_session_chat_and_config(session_id)
+    return None
+
+
 # ============= SESSION ENDPOINTS =============
 
 @app.route('/api/sessions', methods=['GET'])
@@ -202,10 +280,33 @@ def end_session_endpoint(session_id):
                     chat_data = json.load(f)
                     chat_history.extend(chat_data.get('messages', []))
 
-        # Generate summary using AI
+        # Generate summary using AI. With no provider this returns an error and
+        # no summary; fill a factual fallback locally (no network) so memory import works.
         summary_data = ai_service.generate_session_summary(
             session, notes, speeches, chat_history
         )
+        if not isinstance(summary_data, dict):
+            summary_data = {}
+
+        notes_count = len(notes)
+        speeches_count = len(speeches)
+        chat_count = len(chat_history)
+        if not summary_data.get('summary') or not summary_data.get('compressed_memory'):
+            fallback_summary = (
+                f"Session '{session.get('name', '')}' ended. "
+                f"Notes: {notes_count}. Speeches: {speeches_count}. "
+                f"Chat messages: {chat_count}."
+            )
+            if not summary_data.get('summary'):
+                summary_data['summary'] = fallback_summary
+            if not summary_data.get('compressed_memory'):
+                summary_data['compressed_memory'] = fallback_summary
+        if not isinstance(summary_data.get('stats'), dict):
+            summary_data['stats'] = {
+                'notes_count': notes_count,
+                'speeches_count': speeches_count,
+                'chat_interactions': chat_count,
+            }
 
         # End the session with summary
         updated_session = session_manager.end_session(
@@ -458,7 +559,7 @@ def generate_speech():
             'created_at': datetime.now().isoformat()
         }
 
-        speech_file = os.path.join(SPEECHES_DIR, f"{speech_id}.json")
+        speech_file = os.path.join(_get_speeches_dir_for_request(), f"{speech_id}.json")
         with open(speech_file, 'w') as f:
             json.dump(speech_data, f, indent=2)
 
@@ -473,9 +574,10 @@ def get_speeches():
     """Get all saved speeches"""
     try:
         speeches = []
-        for filename in os.listdir(SPEECHES_DIR):
+        speeches_dir = _get_speeches_dir_for_request()
+        for filename in os.listdir(speeches_dir):
             if filename.endswith('.json'):
-                with open(os.path.join(SPEECHES_DIR, filename), 'r') as f:
+                with open(os.path.join(speeches_dir, filename), 'r') as f:
                     speeches.append(json.load(f))
 
         speeches.sort(key=lambda x: x.get('created_at', ''), reverse=True)
@@ -493,10 +595,16 @@ def notes():
     if request.method == 'GET':
         try:
             notes = []
-            for filename in os.listdir(NOTES_DIR):
+            notes_dir = _get_notes_dir_for_request()
+            for filename in os.listdir(notes_dir):
                 if filename.endswith('.json'):
-                    with open(os.path.join(NOTES_DIR, filename), 'r') as f:
-                        notes.append(json.load(f))
+                    try:
+                        with open(os.path.join(notes_dir, filename), 'r') as f:
+                            loaded = json.load(f)
+                        if isinstance(loaded, dict):
+                            notes.append(loaded)
+                    except json.JSONDecodeError:
+                        continue
 
             notes.sort(key=lambda x: x.get('updated_at', ''), reverse=True)
             return jsonify(notes)
@@ -534,7 +642,7 @@ def notes():
 @app.route('/api/notes/<note_id>', methods=['GET', 'PUT', 'DELETE'])
 def note_detail(note_id):
     """Get, update, or delete a specific note"""
-    note_file = os.path.join(NOTES_DIR, f"{note_id}.json")
+    note_file = _note_file_for_request(note_id)
 
     if request.method == 'GET':
         try:
@@ -584,7 +692,7 @@ def note_detail(note_id):
 def analyze_note(note_id):
     """Analyze a note and generate insights"""
     try:
-        note_file = os.path.join(NOTES_DIR, f"{note_id}.json")
+        note_file = _note_file_for_request(note_id)
         if not os.path.exists(note_file):
             return jsonify({'error': 'Note not found'}), 404
 
@@ -884,7 +992,7 @@ def create_note_from_template():
 def move_note_to_folder(note_id):
     """Move a note to a folder"""
     try:
-        note_file = os.path.join(NOTES_DIR, f"{note_id}.json")
+        note_file = _note_file_for_request(note_id)
         if not os.path.exists(note_file):
             return jsonify({'error': 'Note not found'}), 404
 
@@ -941,7 +1049,7 @@ def comprehensive_research():
             'updated_at': datetime.now().isoformat(),
             'analysis': None
         }
-        note1_file = os.path.join(NOTES_DIR, f"{note1_id}.json")
+        note1_file = _note_file_for_request(note1_id)
         with open(note1_file, 'w') as f:
             json.dump(note1, f, indent=2)
         notes_created.append(note1)
@@ -959,7 +1067,7 @@ def comprehensive_research():
             'updated_at': datetime.now().isoformat(),
             'analysis': None
         }
-        note2_file = os.path.join(NOTES_DIR, f"{note2_id}.json")
+        note2_file = _note_file_for_request(note2_id)
         with open(note2_file, 'w') as f:
             json.dump(note2, f, indent=2)
         notes_created.append(note2)
@@ -976,7 +1084,7 @@ def comprehensive_research():
             'updated_at': datetime.now().isoformat(),
             'analysis': None
         }
-        note3_file = os.path.join(NOTES_DIR, f"{note3_id}.json")
+        note3_file = _note_file_for_request(note3_id)
         with open(note3_file, 'w') as f:
             json.dump(note3, f, indent=2)
         notes_created.append(note3)
@@ -993,7 +1101,7 @@ def comprehensive_research():
             'updated_at': datetime.now().isoformat(),
             'analysis': None
         }
-        note4_file = os.path.join(NOTES_DIR, f"{note4_id}.json")
+        note4_file = _note_file_for_request(note4_id)
         with open(note4_file, 'w') as f:
             json.dump(note4, f, indent=2)
         notes_created.append(note4)
@@ -1152,7 +1260,7 @@ def save_research_to_notes():
             'analysis': None
         }
 
-        note_file = os.path.join(NOTES_DIR, f"{note_id}.json")
+        note_file = _note_file_for_request(note_id)
         with open(note_file, 'w') as f:
             json.dump(note_data, f, indent=2)
 
@@ -1621,14 +1729,9 @@ def generate_chit_response():
 def export_note_txt(note_id):
     """Export a note as TXT file"""
     try:
-        session_id = get_session_id_from_request()
-        if not session_id:
-            return jsonify({'error': 'No active session'}), 400
+        note_file = _note_file_for_request(note_id)
 
-        notes_dir = session_manager.get_session_notes_dir(session_id)
-        note_file = notes_dir / f'{note_id}.json'
-
-        if not note_file.exists():
+        if not os.path.exists(note_file):
             return jsonify({'error': 'Note not found'}), 404
 
         with open(note_file, 'r') as f:
@@ -1669,14 +1772,9 @@ def export_note_txt(note_id):
 def export_note_pdf(note_id):
     """Export a note as PDF file"""
     try:
-        session_id = get_session_id_from_request()
-        if not session_id:
-            return jsonify({'error': 'No active session'}), 400
+        note_file = _note_file_for_request(note_id)
 
-        notes_dir = session_manager.get_session_notes_dir(session_id)
-        note_file = notes_dir / f'{note_id}.json'
-
-        if not note_file.exists():
+        if not os.path.exists(note_file):
             return jsonify({'error': 'Note not found'}), 404
 
         with open(note_file, 'r') as f:
@@ -1774,29 +1872,30 @@ def export_note_pdf(note_id):
 
 @app.route('/api/notes/export-all/txt', methods=['GET'])
 def export_all_notes_txt():
-    """Export all notes from current session as a single TXT file"""
+    """Export all notes from the request notes directory as a single TXT file"""
     try:
-        session_id = get_session_id_from_request()
-        if not session_id:
-            return jsonify({'error': 'No active session'}), 400
+        notes_dir = _get_notes_dir_for_request()
 
-        session = session_manager.get_session(session_id)
-        notes_dir = session_manager.get_session_notes_dir(session_id)
-
-        if not notes_dir.exists():
-            return jsonify({'error': 'No notes found'}), 404
-
-        # Collect all notes
+        # Collect all notes (empty directory still exports)
         all_notes = []
-        for note_file in notes_dir.glob('*.json'):
-            with open(note_file, 'r') as f:
-                all_notes.append(json.load(f))
+        if os.path.isdir(notes_dir):
+            for filename in os.listdir(notes_dir):
+                if filename.endswith('.json'):
+                    try:
+                        with open(os.path.join(notes_dir, filename), 'r') as f:
+                            all_notes.append(json.load(f))
+                    except json.JSONDecodeError:
+                        continue
 
         # Sort by created date
         all_notes.sort(key=lambda x: x.get('created_at', ''))
 
+        session_id = get_session_id_from_request()
+        session = session_manager.get_session(session_id) if session_id else None
+        label = session.get('name') if session and session.get('name') else 'Notes'
+
         # Format as plain text
-        txt_content = f"{session['name']} - All Notes\n"
+        txt_content = f"{label} - All Notes\n"
         txt_content += "=" * 50 + "\n\n"
         txt_content += f"Exported: {datetime.now().isoformat()}\n"
         txt_content += f"Total Notes: {len(all_notes)}\n\n"
@@ -1818,7 +1917,7 @@ def export_all_notes_txt():
         buffer.write(txt_content.encode('utf-8'))
         buffer.seek(0)
 
-        filename = f"{session['name'].replace(' ', '_')}_all_notes.txt"
+        filename = f"{label.replace(' ', '_')}_all_notes.txt"
 
         return send_file(
             buffer,

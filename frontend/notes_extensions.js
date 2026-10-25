@@ -2,18 +2,27 @@
 
 // ============= EXPORT FUNCTIONALITY =============
 
+function withSessionId(url) {
+    const session = (typeof currentSession !== 'undefined') ? currentSession : window.currentSession;
+    if (session && session.id != null && session.id !== '') {
+        const sep = url.includes('?') ? '&' : '?';
+        return url + sep + 'session_id=' + encodeURIComponent(session.id);
+    }
+    return url;
+}
+
 function exportNotePDF(noteId) {
-    window.open(`${API_BASE}/notes/${noteId}/export/pdf`, '_blank');
+    window.open(withSessionId(`${API_BASE}/notes/${noteId}/export/pdf`), '_blank');
     showNotification('Downloading PDF...', 'success');
 }
 
 function exportNoteTXT(noteId) {
-    window.open(`${API_BASE}/notes/${noteId}/export/txt`, '_blank');
+    window.open(withSessionId(`${API_BASE}/notes/${noteId}/export/txt`), '_blank');
     showNotification('Downloading TXT...', 'success');
 }
 
 function exportAllNotesTXT() {
-    window.open(`${API_BASE}/notes/export-all/txt`, '_blank');
+    window.open(withSessionId(`${API_BASE}/notes/export-all/txt`), '_blank');
     showNotification('Downloading all notes as TXT...', 'success');
 }
 
@@ -431,7 +440,9 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 
-// Add CSS for export menu and voice button
+// Add CSS for export menu and voice button. Block-scoped so this file still
+// runs after app_new_features.js, which also injects a style element.
+{
 const style = document.createElement('style');
 style.textContent = `
     .export-dropdown {
@@ -512,5 +523,6 @@ style.textContent = `
     }
 `;
 document.head.appendChild(style);
+}
 
 console.log('✅ Notes extensions loaded: Export (PDF/TXT) and Voice-to-Text');

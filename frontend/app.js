@@ -214,6 +214,10 @@ async function loadSavedSpeeches() {
     try {
         const response = await fetch(`${API_BASE}/speeches`);
         const speeches = await response.json();
+        if (!response.ok || !Array.isArray(speeches)) {
+            console.error('Error loading speeches:', speeches);
+            return;
+        }
 
         const container = document.getElementById('savedSpeeches');
         container.innerHTML = '';
@@ -248,6 +252,10 @@ async function loadNotes() {
     try {
         const response = await fetch(`${API_BASE}/notes`);
         let notes = await response.json();
+        if (!response.ok || !Array.isArray(notes)) {
+            console.error('Error loading notes:', notes);
+            return;
+        }
 
         // Filter by folder if one is selected
         if (typeof selectedFolderId !== 'undefined' && selectedFolderId !== null) {
